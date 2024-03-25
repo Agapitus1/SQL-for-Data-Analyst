@@ -1,0 +1,127 @@
+/*
+	IMPORTANT INSTRUCTIONS:
+	1) Before you do anything, click on "Fork" (top left).
+    	This will create a copy of the assessment, tied to a new URL.
+        It is recommended for you to save this URL while you are working.
+    
+    2) Fill in your name into the "Fiddle Title" (left).
+    
+    3) There are a list of tasks for you below, based on the schema built on the left.
+    	It consists of two tables: users and interactions.
+        You can write SQL below and click on "Run" (top left) to run the queries.
+        You can also include queries that don't directly answer the question, if you think that will be helpful.
+        You can also leave comments to explain or elaborate on your answer.
+    
+    4) You can save your progress by clicking on "Update" (top left).
+    
+	5) Once you are finished with the task, click on "Update" one last time.
+    	Then copy the URL, and include the URL in your job application.
+*/
+
+/*
+	There might be a popup that you cannot close. Run any query and you should be able to close it.
+	Example query:
+*/
+SELECT * FROM users;
+
+
+/* 
+	1. Find the total number of users.
+*/
+/* 
+	Answer = 5 users in total.
+*/
+SELECT COUNT(*) AS total_users
+FROM users;
+
+/*
+	2. Find the number of users in each country.
+*/
+/* 
+	Answer = there are 3 AU & 2 US users.
+*/
+SELECT country, COUNT(*) AS amount_users
+FROM users
+GROUP BY country;
+
+
+/*
+	3. Determine the different types of interactions that can be performed.
+*/
+/* 
+	Answer = It can be seen from the table, which I opt out the 'correct' and 'incorrect' as it is not do-able action, there are only 2 interactions that can be performed, which are 'video' and 'hint'.
+*/
+SELECT DISTINCT action
+FROM interactions
+WHERE action NOT IN ('correct', 'incorrect');
+
+
+/*
+	4. Who is the most active user?
+*/	
+/* 
+	Answer = User with the most interaction is Katherine Johnson with 13 interactions.
+*/
+SELECT u.id, u.first_name, u.last_name, COUNT(*) AS interactions_amount
+FROM interactions i
+JOIN users u ON u.id = i.user_id
+GROUP BY u.id, u.first_name, u.last_name
+ORDER BY interactions_amount DESC
+LIMIT 1;
+
+
+/*
+	5. Explore Sophie Germain's interactions and suggest what her experience might have been.
+*/
+/* 
+	Answer = It seems that Sophie Germain is struggling to do her assessment which is shown by 2 incorrect results. She yet using her chance to use hint or video, which might be suggested for her to use hint or video to solve her struggles.
+*/
+SELECT u.first_name, u.last_name, i.timestamp, i.action
+FROM users u
+JOIN interactions i ON u.first_name = 'Sophie' AND u.last_name = 'Germain' AND u.id = i.user_id;
+
+
+/*
+	6. Which do you think is more helpful - hints or videos? Explain your reasoning.
+*/
+/* 
+	Answer = Looking through the data, video is statistically more effective and more helpful. Based on the first table, which shows the total actions, the frequency of user using video is smaller which means that user able to understand the assignment as soon as watch the video. While based on the second table, it can be seen through the success rate of each action, that might not be 100% accurate, but it shows that video has bigger success rate. Therefore video is more helpful for users. 
+*/
+SELECT action, COUNT(*) AS num_actions
+FROM interactions
+WHERE action IN ('hint', 'video')
+GROUP BY action;
+
+-------
+
+SELECT action,
+       SUM(CASE WHEN next_action = 'correct' THEN 1 ELSE 0 END) AS num_success,
+       SUM(CASE WHEN next_action = 'incorrect' THEN 1 ELSE 0 END) AS num_fail,
+       COUNT(*) AS total_actions,
+       ROUND(SUM(CASE WHEN next_action = 'correct' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 2) AS success_rate
+FROM (
+    SELECT action,
+           LEAD(action) OVER (ORDER BY timestamp) AS next_action
+    FROM interactions
+) AS action_next
+WHERE action IN ('hint', 'video')
+GROUP BY action;
+
+
+/*
+	7. On 2023-09-01, a change was made to how videos are accessed.
+    	a) What was the impact of this change?
+        b) Suggest some potential explanations for this change.
+*/
+/* 
+	Answer = 
+a) The impact given by the change on 2023-09-01 was there were no video interactions afterwards, which the video played 4 times before the changes made.
+
+b) Some potentianl explanation regarding this issue is there might be some technical issues that interfere the video availability, which preventing users from accessing videos.
+*/
+
+SELECT
+    COUNT(CASE WHEN action = 'video' AND timestamp < '2023-09-01' THEN 1 END) AS videos_interactions__before_change,
+    COUNT(CASE WHEN action = 'video' AND timestamp >= '2023-09-01' THEN 1 END) AS videos_interactions__after_change
+FROM
+    interactions;
